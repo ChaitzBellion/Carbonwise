@@ -51,7 +51,7 @@ export const educationArticles = [
     description: "Understand CO2e, lifestyle categories, and why monthly tracking creates better choices.",
     category: "Foundations",
     duration: "4 Min",
-    url: "https://www.epa.gov/ghgemissions/basics-greenhouse-gas-emissions"
+    url: "https://ourworldindata.org/co2-and-greenhouse-gas-emissions"
   },
   {
     id: "edu-2",
@@ -59,7 +59,7 @@ export const educationArticles = [
     description: "Practical ways to reduce car and flight emissions without giving up mobility.",
     category: "Transportation",
     duration: "6 Min",
-    url: "https://www.carbontrust.com/news-and-insights/insights/transport-and-the-carbon-footprint"
+    url: "https://www.greenvehicleguide.gov.au/pages/UnderstandingEmissions/TipsToReduceYourEmissions"
   },
   {
     id: "edu-3",
@@ -83,7 +83,7 @@ export const educationArticles = [
     description: "Reduce embodied emissions through repair, resale, borrowing, and buying less often.",
     category: "Shopping",
     duration: "7 Min",
-    url: "https://www.ellenmacarthurfoundation.org/circular-economy/concept"
+    url: "https://www.epa.gov/recycle/reducing-and-reusing-basics"
   },
   {
     id: "edu-6",
