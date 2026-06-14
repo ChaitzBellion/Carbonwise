@@ -1,0 +1,65 @@
+import { renderCategoryBars, renderForecastCards, renderTrendChart } from "./charts.js?v=tiles";
+import { e, formatKg } from "./format.js";
+
+export function renderAnalytics(footprint, recommendations, trend, forecast) {
+  const potential = recommendations.reduce((sum, item) => sum + item.impactKg, 0);
+  return `
+    <section class="view-grid analytics-grid" aria-labelledby="analytics-title">
+      <div class="page-heading">
+        <p class="eyebrow">Analytics</p>
+        <h1 id="analytics-title">Forecast carbon reduction</h1>
+        <p>${formatKg(potential)} monthly savings identified from prioritized recommendations.</p>
+      </div>
+
+      <section class="panel wide" aria-labelledby="historical-title">
+        <div class="section-title">
+          <div>
+            <p class="eyebrow">Historical comparison</p>
+            <h2 id="historical-title">Six-month trend</h2>
+          </div>
+        </div>
+        ${renderTrendChart(trend, "Historical monthly footprint")}
+      </section>
+
+      <section class="panel wide" aria-labelledby="forecast-title">
+        <div class="section-title">
+          <div>
+            <p class="eyebrow">Reduction forecast</p>
+            <h2 id="forecast-title">If you apply top recommendations</h2>
+          </div>
+        </div>
+        ${renderForecastCards(forecast)}
+      </section>
+
+      <section class="panel" aria-labelledby="analytics-breakdown-title">
+        <div class="section-title">
+          <div>
+            <p class="eyebrow">Category analysis</p>
+            <h2 id="analytics-breakdown-title">Monthly CO2e profile</h2>
+          </div>
+        </div>
+        ${renderCategoryBars(footprint.breakdown)}
+      </section>
+
+      <section class="panel" aria-labelledby="analytics-actions-title">
+        <div class="section-title">
+          <div>
+            <p class="eyebrow">Action plan</p>
+            <h2 id="analytics-actions-title">Prioritized by impact</h2>
+          </div>
+        </div>
+        <ol class="ranked-list">
+          ${recommendations.map((item) => `
+            <li>
+              <span>${e(String(item.rank))}</span>
+              <div>
+                <strong>${e(item.title)}</strong>
+                <small>${e(item.category)} · ${formatKg(item.impactKg)} per month</small>
+              </div>
+            </li>
+          `).join("")}
+        </ol>
+      </section>
+    </section>
+  `;
+}

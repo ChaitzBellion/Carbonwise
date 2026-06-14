@@ -1,0 +1,21 @@
+{
+  "name": "carbonwise",
+  "version": "1.0.0",
+  "description": "CarbonWise personal carbon footprint tracker and sustainability assistant.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "node server.js",
+    "test": "node --test tests/*.test.js",
+    "lint": "node --check src/main.js && node --check src/domain/carbonCalculator.js && node --check src/domain/recommendations.js && node --check src/domain/validators.js && node --check src/state/store.js"
+  },
+  "keywords": [
+    "carbon-footprint",
+    "sustainability",
+    "climate",
+    "dashboard",
+    "static-spa"
+  ],
+  "author": "CarbonWise",
+  "license": "MIT"
+}
