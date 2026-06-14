@@ -14,7 +14,6 @@ Input validation, sanitized persistence, XSS-safe rendering, and security header
 Unit, component, and utility tests using the built-in Node test runner.
 Quick Start
 npm.cmd run dev
-Then open http://localhost:4173.
 
 If you are using a shell where npm is not blocked, npm run dev also works.
 
