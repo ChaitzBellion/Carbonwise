@@ -76,9 +76,24 @@ export function renderApp(state, model) {
 
 function renderActiveView(state, model) {
   if (state.activeView === "calculator") return renderCalculator(state, model.footprint);
-  if (state.activeView === "analytics") return renderAnalytics(model.footprint, model.recommendations, model.trend, model.forecast);
+  if (state.activeView === "analytics") return renderAnalytics(state, model.footprint, model.recommendations, model.trend, model.forecast);
   if (state.activeView === "goals") return renderGoals(state);
   if (state.activeView === "challenges") return renderChallenges(state);
   if (state.activeView === "education") return renderEducation(state);
+  if (state.activeView === "methodology") return renderMethodologyPanel(model.methodology);
   return renderOverview(state, model.footprint, model.recommendations, model.trend);
+}
+
+function renderMethodologyPanel(methodology) {
+  return `
+    <section class="panel">
+      <h2>Transportation factors</h2>
+      ${methodology.transport.map(([label, value]) => `
+        <div class="metric-card">
+          <h3>${label}</h3>
+          <p>${value}</p>
+        </div>
+      `).join("")}
+    </section>
+  `;
 }

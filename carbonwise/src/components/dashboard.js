@@ -1,6 +1,7 @@
 import { icon } from "./icons.js";
 import { renderCategoryBars, renderDonut, renderTrendChart } from "./charts.js?v=tiles";
 import { e, formatExactKg, formatKg, priorityLabel } from "./format.js";
+import { scenarioLibrary } from "../domain/scenarioLibrary.js"; 
 
 export function renderOverview(state, footprint, recommendations, trend) {
   const topSource = footprint.topSources[0];
@@ -10,7 +11,48 @@ export function renderOverview(state, footprint, recommendations, trend) {
         <p class="eyebrow">Personal dashboard</p>
         <h1 id="overview-title">CarbonWise</h1>
         <p>${e(footprint.summary.status)} across transportation, home, food, shopping, and waste.</p>
+        
+        <!-- Feature 1: Share Button -->
+        <button class="primary-button" type="button" data-action="share-impact" style="margin-top: 1rem;">
+          ${icon("share")} Share my impact
+        </button>
       </div>
+
+      <!-- Simulation Section -->
+      ${state.simulation && state.simulation.monthlySavingsKg > 0 ? `
+        <div class="panel highlight-panel simulation-result" style="background: var(--surface-2); border: 2px solid var(--primary); grid-column: 1 / -1; margin-bottom: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem;">
+            <div>
+              <p class="eyebrow" style="color: var(--primary); margin: 0;">Simulation Active</p>
+              <h2 style="margin: 0.5rem 0">🌱 Projected Savings</h2>
+              <p style="margin: 0">By making this change, your monthly footprint would drop by <strong>${state.simulation.monthlySavingsKg} kg</strong>!</p>
+              <p style="font-size: 0.9rem; margin-top: 0.5rem; opacity: 0.8;">Carbon score improvement: <strong>+${state.simulation.improvedScore} points</strong>.</p>
+            </div>
+            <button class="primary-button" type="button" data-action="clear-simulation">
+              ${icon("reset")} Reset View
+            </button>
+          </div>
+        </div>
+      ` : `
+        <div class="panel wide" style="grid-column: 1 / -1; margin-bottom: 1rem; padding: 1.5rem;">
+          <h2 style="margin-top: 0">What if you made a change?</h2>
+          <p style="opacity: 0.8; margin-bottom: 1.5rem;">Select a scenario below to see how it affects your carbon footprint and score.</p>
+          
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;">
+            ${scenarioLibrary.map(scenario => `
+              <div style="padding: 1.25rem; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-1); display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                  <h3 style="margin: 0 0 0.5rem 0; font-size: 1.1rem;">${e(scenario.title)}</h3>
+                  <p style="font-size: 0.9rem; line-height: 1.4; margin-bottom: 1.25rem; opacity: 0.7;">${e(scenario.description)}</p>
+                </div>
+                <button class="ghost-button" style="width: 100%; border: 1px solid var(--primary); color: var(--primary);" type="button" data-action="run-scenario" data-scenario-id="${scenario.id}">
+                  ⚡ Try this
+                </button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `}
 
       ${state.lastMilestone ? `
         <div class="notice success" role="status">
@@ -97,6 +139,44 @@ export function renderOverview(state, footprint, recommendations, trend) {
         </div>
         ${renderCategoryBars(footprint.breakdown)}
       </section>
+
+      <!-- Feature 2: Offset Calculator Integration -->
+      ${renderOffsetCalculator(footprint.monthlyKg)}
+
+    </section>
+  `;
+}
+
+function renderOffsetCalculator(monthlyKg) {
+  const burgerEquivalent = Math.round(monthlyKg / 2.5); 
+  const flightEquivalent = (monthlyKg / 250).toFixed(1); 
+  const smartphoneEquivalent = Math.round(monthlyKg / 0.06); 
+
+  return `
+    <section class="panel wide" style="background: var(--surface-2); border-left: 4px solid var(--primary); grid-column: 1 / -1;">
+      <div class="section-title">
+        <div>
+          <p class="eyebrow">Real-world perspective</p>
+          <h2>Your monthly impact is equal to...</h2>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1.5rem; padding: 1rem 0;">
+        <div style="text-align: center;">
+          <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🍔</div>
+          <strong>${burgerEquivalent}</strong>
+          <p style="font-size: 0.8rem; opacity: 0.7;">Average cheeseburgers</p>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">✈️</div>
+          <strong>${flightEquivalent}</strong>
+          <p style="font-size: 0.8rem; opacity: 0.7;">Short-haul flights</p>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📱</div>
+          <strong>${smartphoneEquivalent.toLocaleString()}</strong>
+          <p style="font-size: 0.8rem; opacity: 0.7;">Smartphone charges</p>
+        </div>
+      </div>
     </section>
   `;
 }

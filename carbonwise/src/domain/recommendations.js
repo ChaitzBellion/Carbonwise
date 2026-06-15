@@ -165,3 +165,38 @@ function recyclingBoost(activity, factors) {
     action: "Place a labeled recycling station next to landfill bins and check local accepted materials.",
   };
 }
+
+export function enrichRecommendations(recommendations, activity) {
+  return recommendations.map((item) => ({
+    ...item,
+    impactKgMonth: estimateImpact(item, activity),
+    difficulty: estimateDifficulty(item),
+    payback: estimatePayback(item),
+  }));
+}
+
+function estimateImpact(item, activity) {
+  const map = {
+    transportation: activity.transportation.carKmWeek * 0.192 * 52 / 12 * 0.15,
+    homeEnergy: activity.homeEnergy.electricityKwhMonth * 0.386 * 0.12,
+    food: 18,
+    shopping: activity.shopping.generalSpendMonth * 0.18 * 0.1,
+    waste: activity.waste.wasteKgWeek * 52 / 12 * 0.58 * 0.12,
+  };
+
+  return roundOne(map[item.category] ?? 10);
+}
+
+function estimateDifficulty(item) {
+  if (item.category === "food" || item.category === "transportation") return "Medium";
+  if (item.category === "waste") return "Easy";
+  return "Medium";
+}
+
+function estimatePayback(item) {
+  if (item.category === "homeEnergy") return "2-6 months";
+  if (item.category === "shopping") return "Immediate";
+  return "Behavioral";
+}
+
+

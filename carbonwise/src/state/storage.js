@@ -31,6 +31,7 @@ export function saveState(state) {
     educationCategory: state.educationCategory,
     lastMilestone: state.lastMilestone,
     lastUpdatedDate: state.lastUpdatedDate || new Date().toDateString(),
+    history: state.history || [],
   };
 
   try {

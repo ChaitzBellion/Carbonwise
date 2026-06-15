@@ -6,6 +6,10 @@ import {
 import { createStore } from "./state/store.js";
 import { renderApp } from "./components/app.js?v=tiles";
 import { sanitizeText } from "./domain/validators.js";
+import { enrichRecommendations } from "./domain/recommendations.js";
+import { getMethodology } from "./domain/methodology.js";
+import { simulateScenario } from "./domain/scenarioSimulator.js";
+import { scenarioLibrary } from "./domain/scenarioLibrary.js";
 
 const app = document.querySelector("#app");
 const store = createStore();
@@ -48,20 +52,40 @@ setTimeout(render, 180);
 /**
  * Renders the application based on current state
  */
+
 function render() {
   const state = store.getState();
   const footprint = calculateFootprint(state.activity);
   const recommendations = generateRecommendations(state.activity, footprint);
   const trend = buildTrendData(footprint.monthlyKg);
   const forecast = recommendationForecast(footprint.monthlyKg, recommendations);
+  const methodology = getMethodology();
 
   document.documentElement.dataset.theme = state.theme;
   app.className = "";
-  
-  // This line re-renders the HTML, which is why we need to restore focus later
-  app.innerHTML = renderApp(state, { footprint, recommendations, trend, forecast });
-  
-  restoreFocus();
+
+  const model = { footprint, recommendations, trend, forecast, methodology };
+
+  if (!document.startViewTransition) {
+    app.innerHTML = renderApp(state, model);
+    // CALL CHART HERE FOR NON-TRANSITION BROWSERS
+    if (state.activeView === "analytics") {
+      setTimeout(() => initHistoryChart(state.history), 100);
+    }
+    restoreFocus();
+  } else {
+    const transition = document.startViewTransition(() => {
+      app.innerHTML = renderApp(state, model);
+      restoreFocus();
+    });
+
+    // CALL CHART HERE FOR TRANSITION BROWSERS
+    transition.finished.then(() => {
+      if (state.activeView === "analytics") {
+        setTimeout(() => initHistoryChart(state.history), 100);
+      }
+    });
+  }
 }
 
 /**
@@ -71,7 +95,7 @@ function handleClick(event) {
   const viewButton = event.target.closest("[data-view]");
   if (viewButton) {
     store.dispatch({ type: "SET_VIEW", view: viewButton.dataset.view });
-    render(); // Update UI to show the new view
+    render(); 
     focusMain();
     return;
   }
@@ -79,6 +103,7 @@ function handleClick(event) {
   const button = event.target.closest("[data-action]");
   if (!button) return;
 
+  // 1. Declare 'action' ONCE here
   const { action } = button.dataset;
   
   if (action === "toggle-theme") {
@@ -86,7 +111,7 @@ function handleClick(event) {
       type: "SET_THEME", 
       theme: store.getState().theme === "dark" ? "light" : "dark" 
     });
-    render(); // Update UI to reflect the theme change
+    render();
   }
   
   if (action === "update-goal") {
@@ -95,34 +120,82 @@ function handleClick(event) {
       id: button.dataset.id, 
       delta: Number(button.dataset.delta || 0) 
     });
-    render(); // Update UI to show new goal progress
+    render();
   }
   
   if (action === "remove-goal") {
     store.dispatch({ type: "REMOVE_GOAL", id: button.dataset.id });
-    render(); // Update UI to remove the goal card
+    render();
   }
   
   if (action === "toggle-challenge") {
     store.dispatch({ type: "TOGGLE_CHALLENGE", id: button.dataset.id });
-    render(); // Update UI to show challenge status
+    render();
   }
   
   if (action === "advance-challenge") {
     store.dispatch({ type: "ADVANCE_CHALLENGE", id: button.dataset.id });
-    render(); // Update UI to show challenge progress
+    render();
   }
   
   if (action === "education-category") {
     store.dispatch({ type: "SET_EDUCATION_CATEGORY", value: button.dataset.category });
-    render(); // Update UI to show the selected category
+    render();
   }
   
   if (action === "reset-sample") {
     store.dispatch({ type: "RESET_SAMPLE" });
-    render(); // Update UI to clear all data
+    render();
+  }
+
+  // Inside handleClick in main.js
+  if (action === "run-scenario") {
+    const { scenarioId } = button.dataset;
+    const state = store.getState();
+  
+  // 1. Find the scenario in your library
+    const scenario = scenarioLibrary.find(s => s.id === scenarioId);
+    if (!scenario){
+      console.error("Scenario not found:", scenarioId);
+      return;
+    }
+
+  // 2. Generate the "patch" for this specific activity
+    const patch = scenario.patchFor(state.activity);
+
+  // 3. Run the simulation
+    const result = simulateScenario(state.activity, patch);
+  
+  // 4. Save and update
+    store.dispatch({ type: "SET_SIMULATION", simulation: result });
+    render();
+    return;
+  }
+  if (action === "clear-simulation") {
+    store.dispatch({ type: "CLEAR_SIMULATION" });
+    render(); // This will refresh the screen and show the scenarios again
+    return;
+  }
+  // Inside handleClick in main.js
+  if (action === "share-impact") {
+    const state = store.getState();
+    const footprint = calculateFootprint(state.activity);
+  
+    const shareText = `🌱 My CarbonWise Update:
+  
+  ⭐ Score: ${footprint.score}/100
+  🌍 Monthly Footprint: ${footprint.monthlyKg}kg CO2e
+  🌳 Impact: My lifestyle is equivalent to planting ${footprint.summary.treesEquivalent} trees per year!
+
+  Track your own footprint on CarbonWise.`;
+
+    navigator.clipboard.writeText(shareText).then(() => {
+      alert("Impact summary copied to clipboard! You can now paste it to social media.");
+    });
+    return;
   }
 }
+
 
 /**
  * Handles all input changes (The Dynamic Logic)
@@ -169,6 +242,14 @@ function handleSubmit(event) {
 
     // 2. NOW render. The store is guaranteed to have the latest data.
     console.log("Calculation triggered with fresh data!");
+
+// Inside handleSubmit in main.js
+const finalFootprint = calculateFootprint(store.getState().activity);
+store.dispatch({ 
+  type: "RECORD_FOOTPRINT", 
+  monthlyKg: finalFootprint.monthlyKg,
+  score: finalFootprint.score
+});
     render();
 
     // 3. Scroll to results
@@ -211,3 +292,49 @@ function restoreFocus() {
     }
   });
 }
+
+function initHistoryChart(history) {
+  const canvas = document.getElementById('historyChart');
+  if (!canvas) return; 
+
+  // 1. Prepare data (Date for X-axis, kg for Y-axis)
+  const labels = history.map(item => new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
+  const dataPoints = history.map(item => item.monthlyKg);
+
+  // 2. Create the chart
+  new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Monthly Emissions (kg)',
+        data: dataPoints,
+        borderColor: '#153f35', // Match your dark green theme
+        backgroundColor: 'rgba(148, 210, 189, 0.2)', // Light green fill
+        borderWidth: 3,
+        fill: true,
+        tension: 0.4, // Smooth curved lines
+        pointRadius: 4,
+        pointBackgroundColor: '#153f35'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false } // Keep it clean
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(0,0,0,0.05)' },
+          title: { display: true, text: 'kg CO2e' }
+        },
+        x: {
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+

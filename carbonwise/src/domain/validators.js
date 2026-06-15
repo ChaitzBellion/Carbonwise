@@ -136,6 +136,7 @@ export function sanitizeStoredState(state, fallback) {
     educationSearch: sanitizeText(state.educationSearch, 60),
     educationCategory: sanitizeText(state.educationCategory, 32) || fallback.educationCategory,
     lastMilestone: sanitizeText(state.lastMilestone, 120),
+    history: Array.isArray(state.history) ? state.history.slice(0, 100) : fallback.history,
   };
 }
 

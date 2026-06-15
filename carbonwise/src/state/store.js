@@ -25,6 +25,16 @@ const defaultState = Object.freeze({
   lastMilestone: "",
   loading: false,
   error: "",
+  simulation: {
+    currentFootprint: null,
+    projectedFootprint: null,
+    monthlySavingsKg: 0,
+    yearlySavingsKg: 0,
+    improvedScore: 0,
+  },
+  history: [], // For storing past footprints and activities
+  lastUpdatedDate: new Date().toDateString(), 
+  
 });
 
 export function createInitialState() {
@@ -76,6 +86,38 @@ export function createStore(initialState = createInitialState()) {
 
 export function reducer(state, action) {
   switch (action.type) {
+    case "RECORD_FOOTPRINT":
+  return {
+    ...state,
+    history: [
+      ...state.history,
+      { 
+        date: new Date().toISOString(), 
+        monthlyKg: action.monthlyKg,
+        score: action.score 
+      }
+    ].slice(-12) // This keeps only the last 12 records (1 year)
+  };
+     // 1. Corrected SET_SIMULATION
+    case "SET_SIMULATION":
+      return { 
+        ...state, 
+        simulation: action.simulation 
+      };
+
+    // 2. Added CLEAR_SIMULATION (helpful for the reset button)
+    case "CLEAR_SIMULATION":
+      return { 
+        ...state, 
+        simulation: {
+          currentFootprint: null,
+          projectedFootprint: null,
+          monthlySavingsKg: 0,
+          yearlySavingsKg: 0,
+          improvedScore: 0,
+        } 
+      };
+
     case "SET_VIEW":
       return { ...state, activeView: sanitizeText(action.view, 24) || "overview" };
     case "SET_THEME":
@@ -136,6 +178,7 @@ export function reducer(state, action) {
     default:
       return state;
   }
+  
 }
 
 function deepMerge(base, patch) {

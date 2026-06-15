@@ -1,7 +1,7 @@
 import { renderCategoryBars, renderForecastCards, renderTrendChart } from "./charts.js?v=tiles";
 import { e, formatKg } from "./format.js";
 
-export function renderAnalytics(footprint, recommendations, trend, forecast) {
+export function renderAnalytics(state, footprint, recommendations, trend, forecast) {
   const potential = recommendations.reduce((sum, item) => sum + item.impactKg, 0);
   return `
     <section class="view-grid analytics-grid" aria-labelledby="analytics-title">
@@ -10,6 +10,27 @@ export function renderAnalytics(footprint, recommendations, trend, forecast) {
         <h1 id="analytics-title">Forecast carbon reduction</h1>
         <p>${formatKg(potential)} monthly savings identified from prioritized recommendations.</p>
       </div>
+
+      <!-- New Visual History Chart Section -->
+      ${state.history.length > 0 ? `
+        <section class="panel wide" aria-labelledby="history-chart-title">
+          <div class="section-title">
+            <div>
+              <p class="eyebrow">Visual Progress</p>
+              <h2 id="history-chart-title">Personal Footprint History</h2>
+            </div>
+          </div>
+          <div style="height: 320px; width: 100%; position: relative;">
+            <canvas id="historyChart"></canvas>
+          </div>
+        </section>
+      ` : `
+        <section class="panel wide" style="text-align: center; padding: 3rem;">
+           <div style="font-size: 3rem; margin-bottom: 1rem;">📈</div>
+           <h3>No historical data yet</h3>
+           <p style="opacity: 0.7;">Complete a calculation in the Calculator tab to start tracking your progress over time.</p>
+        </section>
+      `}
 
       <section class="panel wide" aria-labelledby="historical-title">
         <div class="section-title">
