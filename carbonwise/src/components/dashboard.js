@@ -3,20 +3,66 @@ import { renderCategoryBars, renderDonut, renderTrendChart } from "./charts.js?v
 import { e, formatExactKg, formatKg, priorityLabel } from "./format.js";
 import { scenarioLibrary } from "../domain/scenarioLibrary.js"; 
 
-export function renderOverview(state, footprint, recommendations, trend) {
+export function renderOverview(state, footprint, recommendations, trend, forecast, insight, badges, benchmark, prediction) {
   const topSource = footprint.topSources[0];
   return `
     <section class="view-grid overview-grid" aria-labelledby="overview-title">
       <div class="page-heading">
         <p class="eyebrow">Personal dashboard</p>
         <h1 id="overview-title">CarbonWise</h1>
-        <p>${e(footprint.summary.status)} across transportation, home, food, shopping, and waste.</p>
-        
+        <div class="button-group" style="display: flex; gap: 1rem; grid-row: 4; grid-column: 1 / -1;">
         <!-- Feature 1: Share Button -->
-        <button class="primary-button" type="button" data-action="share-impact" style="margin-top: 1rem;">
-          ${icon("share")} Share my impact
+        <button class="primary-button" type="button" data-action="share-impact">
+        ${icon("share")} Share my impact
         </button>
+        
+        <!-- Feature 2: Export Button -->
+        <button class="primary-button" type="button" data-action="export-report">
+        ${icon("file")} Export PDF Report
+        </button>
+        </div>
+        <p>${e(footprint.summary.status)} across transportation, home, food, shopping, and waste.</p>
       </div>
+        ${insight ? renderAICoach(insight) : ""}
+        ${badges?.length ? renderBadges(badges) : ""}
+
+        ${prediction ? `
+          <section class="panel wide" aria-labelledby="prediction-title" style=" border-left:4px solid var(--primary); margin-bottom:1rem; background:var(--surface-2);">
+  <div class="section-title">
+    <div>
+      <p class="eyebrow">
+        AI Prediction
+      </p>
+
+      <h2 id="prediction-title">
+        Future Carbon Outlook
+      </h2>
+    </div>
+
+    <span class="pill">
+      ${prediction.confidence}% confidence
+    </span>
+  </div>
+
+  <p>
+    ${e(prediction.message)}
+  </p>
+
+  <p>
+    Projected next-month footprint:
+    <strong>
+      ${prediction.projectedMonthlyKg} kg CO₂e
+    </strong>
+  </p>
+
+  <p>
+    Trend:
+    <strong>
+      ${e(prediction.trend)}
+    </strong>
+  </p>
+</section>
+` : ""}
 
       <!-- Simulation Section -->
       ${state.simulation && state.simulation.monthlySavingsKg > 0 ? `
@@ -61,8 +107,30 @@ export function renderOverview(state, footprint, recommendations, trend) {
         </div>
       ` : ""}
 
+      ${state.streak?.current > 0 ? `
+        <section
+        class="panel wide"
+        style="
+        grid-column: 1 / -1;
+        border-left: 4px solid #ff9800;
+        background: var(--surface-2);
+        "
+        >
+        <div class="section-title">
+        <div>
+        <p class="eyebrow">Carbon Streak</p>
+        <h2>🔥 ${state.streak.current} Day Streak</h2>
+        </div>
+        </div>
+        <p>
+        You've tracked your footprint for <strong>${state.streak.current}</strong> consecutive days.
+        </p>
+        <p> Best streak: <strong>${state.streak.best}</strong> days. </p>
+        </section>
+        ` : ""}
+
       <section class="score-panel panel" aria-label="Carbon score">
-        <div class="score-ring" style="--score:${footprint.score}">
+        <div class="score-ring" style="--score:${footprint.score}" role="progressbar" aria-valuemin="0" aria-valuemax="100" ariavaluenow="${footprint.score}" aria-label="Carbon score">
           <span>${footprint.score}</span>
           <small>score</small>
         </div>
@@ -86,6 +154,77 @@ export function renderOverview(state, footprint, recommendations, trend) {
         <strong>${formatKg(footprint.yearlyKg)}</strong>
         <small>${footprint.summary.treesEquivalent.toLocaleString()} tree-year equivalent</small>
       </section>
+
+      <section class="metric-card panel">
+      <span class="metric-icon">🔥</span>
+      <p>Current Streak</p>
+      <strong>
+      ${state.streak?.current ?? 0} days
+      </strong>
+      <small>
+      Best streak: ${state.streak?.best ?? 0} days
+      </small>
+      </section>
+
+      <section class="metric-card panel">
+      <span class="metric-icon">${icon("target")}</span>
+      
+      <p>Benchmark</p>
+      
+      <strong>
+      ${footprint.monthlyKg < 500
+        ? "Below Target"
+        : footprint.monthlyKg < 900
+        ? "Average"
+        : "Above Average"}
+      </strong>
+      
+      <small>
+      Sustainable target: 500 kg/month
+      </small>
+      </section>
+
+      ${benchmark ? `
+        <section class="panel" aria-labelledby="benchmark-comparison-title">
+        <div class="section-title">
+        <div>
+        <p class="eyebrow">Benchmark Comparison</p>
+        <h2 id="benchmark-comparison-title"> How you compare </h2>
+        </div>
+        </div>
+        
+        <div style=" display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:1rem;">
+        <div class="metric-card"> <p>Category</p> 
+        <strong>
+        ${e(benchmark.band)}</strong></div>
+        <div class="metric-card"> <p>vs Low Carbon</p> <strong>
+        ${benchmark.vsLowCarbonKg > 0
+          ? "+" + formatKg(benchmark.vsLowCarbonKg)
+          : formatKg(Math.abs(benchmark.vsLowCarbonKg))}
+          </strong>
+          </div>
+          
+          <div class="metric-card"> <p>vs Average</p>
+          <strong>
+          ${benchmark.vsAverageKg > 0
+            ? "+" + formatKg(benchmark.vsAverageKg)
+            : formatKg(Math.abs(benchmark.vsAverageKg))}
+            </strong>
+            </div>
+            </div>
+            <div style="margin-top:1rem;"> <p style="margin-bottom:0.5rem;"> Position against benchmark scale </p>
+            <div style=" width:100%; height:12px; background:var(--surface-2); border-radius:999px; overflow:hidden;"            role="img" aria-label="Benchmark position: ${benchmark.band}">
+      <div
+        style="
+          width:${benchmark.normalizedPosition}%;
+          height:100%;
+          background:var(--primary);
+        "
+      ></div>
+    </div>
+  </div>
+</section>
+` : ""}
 
       <section class="panel" aria-labelledby="sources-title">
         <div class="section-title">
@@ -123,6 +262,13 @@ export function renderOverview(state, footprint, recommendations, trend) {
                 <span class="pill">${e(priorityLabel(item.priority))}</span>
                 <h3>${e(item.title)}</h3>
                 <p>${e(item.action)}</p>
+                <small> AI confidence: ${item.confidence}% - ${e(item.reason)}</small>
+                <p class="recommendation-why" style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.75;">Why? ${e(item.reason)}</p>
+                <section class="metric-card panel">
+                  <span class="metric-icon">${icon("bolt")}</span>
+                  <p>Estimated impact</p>
+                  <strong>${formatExactKg(item.impactKg)} / mo</strong>
+                </section>
               </div>
               <strong>${formatKg(item.impactKg)} / mo</strong>
             </article>
@@ -186,4 +332,98 @@ function scoreMessage(score) {
   if (score >= 65) return "Strong progress with room to improve";
   if (score >= 45) return "Meaningful reductions available";
   return "High-impact changes recommended";
+}
+
+
+function renderAICoach(insight) {
+  return `
+    <section
+      class="panel wide"
+      aria-labelledby="ai-coach-title"
+      aria-live="polite"
+      style="
+        margin: 1rem 0;
+        border-left: 4px solid var(--primary);
+      "
+    >
+      <div class="section-title">
+        <div>
+          <p class="eyebrow">
+            AI Sustainability Coach
+          </p>
+
+          <h2 id="ai-coach-title">
+            Personalized Insights
+          </h2>
+        </div>
+
+        <span class="pill">
+          ${insight.confidence}% confidence
+        </span>
+      </div>
+
+      <p>
+        ${e(insight.headline)}
+      </p>
+
+      <p>
+        ${e(insight.bestAction)}
+      </p>
+
+      <p>
+        ${e(insight.benchmarkLine)}
+      </p>
+
+      <strong>
+        Potential yearly reduction:
+        ${insight.annualSaving} kg CO₂e
+      </strong>
+    </section>
+  `;
+}
+
+function renderBadges(badges) {
+  return `
+    <section
+      class="panel wide"
+      aria-labelledby="badges-title"
+      style="margin: 1rem 0;"
+    >
+      <div class="section-title">
+        <div>
+          <p class="eyebrow">Achievements</p>
+          <h2 id="badges-title">
+            Sustainability Badges
+          </h2>
+        </div>
+      </div>
+
+      <div
+        style="
+          display:grid;
+          grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+          gap:1rem;
+        "
+      >
+        ${badges.map(badge => `
+          <div
+            class="metric-card panel"
+            style="text-align:center;"
+          >
+            <div style="font-size:2rem;">
+              ${badge.icon}
+            </div>
+
+            <strong>
+              ${e(badge.title)}
+            </strong>
+
+            <small>
+              ${e(badge.description)}
+            </small>
+          </div>
+        `).join("")}
+      </div>
+    </section>
+  `;
 }

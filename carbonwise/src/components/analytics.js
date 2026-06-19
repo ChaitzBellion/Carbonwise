@@ -1,18 +1,55 @@
 import { renderCategoryBars, renderForecastCards, renderTrendChart } from "./charts.js?v=tiles";
 import { e, formatKg } from "./format.js";
 
-export function renderAnalytics(state, footprint, recommendations, trend, forecast) {
+export function renderAnalytics(state, footprint, recommendations, trend, forecast, insight) {
+  const history = state.history ?? [];
   const potential = recommendations.reduce((sum, item) => sum + item.impactKg, 0);
+  const yearlyPotential =
+  Math.round(potential * 12);
   return `
     <section class="view-grid analytics-grid" aria-labelledby="analytics-title">
       <div class="page-heading">
         <p class="eyebrow">Analytics</p>
         <h1 id="analytics-title">Forecast carbon reduction</h1>
         <p>${formatKg(potential)} monthly savings identified from prioritized recommendations.</p>
+        <p>${yearlyPotential.toLocaleString()} kg CO₂e could be avoided annually if all recommendations are adopted.</p>
       </div>
 
+      ${insight ? `
+        <section class="panel wide">
+        <div class="section-title">
+
+        <div>
+        <p class="eyebrow">AI Analysis</p>
+        <h2>Key Findings</h2>
+        </div>
+        </div>
+        
+        <p>
+        <strong>Main Source:</strong>
+        ${e(insight.headline)}
+        </p>
+        
+        <p>
+        <strong>Recommended Action:</strong>
+        ${e(insight.bestAction)}
+        </p>
+
+        <p>
+        <strong>Benchmark:</strong>
+        ${e(insight.benchmarkLine)}
+        </p>
+
+        <p>
+        <strong>Potential Annual Reduction:</strong>
+        ${insight.annualSaving} kg CO₂e
+        </p>
+        </section>
+        ` : ""}
+
+
       <!-- New Visual History Chart Section -->
-      ${state.history.length > 0 ? `
+      ${history.length > 0 ? `
         <section class="panel wide" aria-labelledby="history-chart-title">
           <div class="section-title">
             <div>
@@ -70,16 +107,27 @@ export function renderAnalytics(state, footprint, recommendations, trend, foreca
           </div>
         </div>
         <ol class="ranked-list">
-          ${recommendations.map((item) => `
-            <li>
-              <span>${e(String(item.rank))}</span>
-              <div>
-                <strong>${e(item.title)}</strong>
-                <small>${e(item.category)} · ${formatKg(item.impactKg)} per month</small>
-              </div>
-            </li>
+        ${recommendations.map((item) => `
+          <li>
+
+          <span>${e(String(item.rank))}</span>
+          <div>
+          <strong>${e(item.title)}</strong>
+          
+          <small>
+          ${e(item.category)}
+          · ${formatKg(item.impactKg)} per month
+          </small>
+          
+          <div style="margin-top: 0.35rem;">
+          <small>
+          Confidence: ${item.confidence ?? 80}%
+          </small>
+          </div>
+          </div>
+          </li>
           `).join("")}
-        </ol>
+          </ol>
       </section>
     </section>
   `;

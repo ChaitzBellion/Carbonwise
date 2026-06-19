@@ -10,6 +10,11 @@ import { enrichRecommendations } from "./domain/recommendations.js";
 import { getMethodology } from "./domain/methodology.js";
 import { simulateScenario } from "./domain/scenarioSimulator.js";
 import { scenarioLibrary } from "./domain/scenarioLibrary.js";
+import { generatePersonalInsights } from "./domain/personalInsights.js";
+import { evaluateBadges } from "./domain/badges.js";
+import { generatePDFReport } from "./domain/reportGenerator.js";
+import { buildBenchmark } from "./domain/benchmarks.js";
+import { generatePrediction } from "./domain/prediction.js";
 
 const app = document.querySelector("#app");
 const store = createStore();
@@ -57,6 +62,21 @@ function render() {
   const state = store.getState();
   const footprint = calculateFootprint(state.activity);
   const recommendations = generateRecommendations(state.activity, footprint);
+  const benchmark = buildBenchmark(footprint.yearlyKg);
+  const prediction = generatePrediction(state.history, footprint);
+  const insight = generatePersonalInsights(footprint,recommendations);
+  const badges = evaluateBadges(footprint,recommendations);
+
+const previousBadgeIds =
+  state.earnedBadges ?? [];
+
+const currentBadgeIds =
+  badges.map(badge => badge.id);
+
+const newBadge =
+  badges.find(
+    badge => !previousBadgeIds.includes(badge.id)
+  );
   const trend = buildTrendData(footprint.monthlyKg);
   const forecast = recommendationForecast(footprint.monthlyKg, recommendations);
   const methodology = getMethodology();
@@ -64,7 +84,7 @@ function render() {
   document.documentElement.dataset.theme = state.theme;
   app.className = "";
 
-  const model = { footprint, recommendations, trend, forecast, methodology };
+  const model = { footprint, recommendations, trend, forecast, methodology, insight, badges, benchmark, prediction };
 
   if (!document.startViewTransition) {
     app.innerHTML = renderApp(state, model);
@@ -184,7 +204,7 @@ function handleClick(event) {
     const shareText = `🌱 My CarbonWise Update:
   
   ⭐ Score: ${footprint.score}/100
-  🌍 Monthly Footprint: ${footprint.monthlyKg}kg CO2e
+  🌍 Monthly Footprint: ${footprint.monthlyKg.toFixed(1)}kg CO2e
   🌳 Impact: My lifestyle is equivalent to planting ${footprint.summary.treesEquivalent} trees per year!
 
   Track your own footprint on CarbonWise.`;
@@ -192,6 +212,20 @@ function handleClick(event) {
     navigator.clipboard.writeText(shareText).then(() => {
       alert("Impact summary copied to clipboard! You can now paste it to social media.");
     });
+    return;
+  }
+
+    if (action === "export-report") {
+    const state = store.getState();
+    
+    // Calculate all data needed for the report
+    const footprint = calculateFootprint(state.activity);
+    const recommendations = generateRecommendations(state.activity, footprint);
+    const insight = generatePersonalInsights(footprint, recommendations);
+    const badges = evaluateBadges(footprint, recommendations);
+
+    // Call the generator
+    generatePDFReport(footprint, recommendations, insight, badges);
     return;
   }
 }
@@ -245,11 +279,60 @@ function handleSubmit(event) {
 
 // Inside handleSubmit in main.js
 const finalFootprint = calculateFootprint(store.getState().activity);
+const recommendations =
+  generateRecommendations(
+    store.getState().activity,
+    finalFootprint
+  );
+
+const badges =
+  evaluateBadges(
+    finalFootprint,
+    recommendations
+  );
+
+const state = store.getState();
+
+const previousBadgeIds =
+  state.earnedBadges ?? [];
+
+const newBadge =
+  badges.find(
+    badge => !previousBadgeIds.includes(badge.id)
+  );
+
+if (newBadge) {
+  store.dispatch({
+    type: "SHOW_NOTIFICATION",
+    notification: {
+      type: "badge",
+      title: "🏆 Badge Unlocked",
+      badge: newBadge,
+    },
+  });
+
+  setTimeout(() => {
+    store.dispatch({
+      type: "CLEAR_NOTIFICATION",
+    });
+  }, 4000);
+}
+
+store.dispatch({
+  type: "SET_EARNED_BADGES",
+  badges: badges.map(b => b.id),
+});
+
 store.dispatch({ 
   type: "RECORD_FOOTPRINT", 
   monthlyKg: finalFootprint.monthlyKg,
   score: finalFootprint.score
 });
+
+store.dispatch({
+  type: "UPDATE_STREAK"
+});
+
     render();
 
     // 3. Scroll to results
@@ -302,7 +385,10 @@ function initHistoryChart(history) {
   const dataPoints = history.map(item => item.monthlyKg);
 
   // 2. Create the chart
-  new Chart(canvas, {
+  if (window.historyChartInstance) {
+  window.historyChartInstance.destroy();
+}
+  window.historyChartInstance = new Chart(canvas, {
     type: 'line',
     data: {
       labels: labels,

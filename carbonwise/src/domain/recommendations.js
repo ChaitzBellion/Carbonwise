@@ -24,6 +24,8 @@ export function generateRecommendations(activity, footprint, factors = EMISSION_
     .map((recommendation, index) => ({
       ...recommendation,
       rank: index + 1,
+      confidence: recommendationConfidence(recommendation),
+      reason: recommendationReason(recommendation),
     }));
 }
 
@@ -177,26 +179,95 @@ export function enrichRecommendations(recommendations, activity) {
 
 function estimateImpact(item, activity) {
   const map = {
-    transportation: activity.transportation.carKmWeek * 0.192 * 52 / 12 * 0.15,
-    homeEnergy: activity.homeEnergy.electricityKwhMonth * 0.386 * 0.12,
-    food: 18,
-    shopping: activity.shopping.generalSpendMonth * 0.18 * 0.1,
-    waste: activity.waste.wasteKgWeek * 52 / 12 * 0.58 * 0.12,
+    Transportation:
+    activity.transportation.carKmWeek * 0.192 * 52 / 12 * 0.15,
+    
+    "Home Energy":
+    activity.homeEnergy.electricityKwhMonth * 0.386 * 0.12,
+    
+    Food: 18,
+    
+    Shopping:
+    activity.shopping.generalSpendMonth * 0.18 * 0.1,
+    
+    Waste:
+    activity.waste.wasteKgWeek * 52 / 12 * 0.58 * 0.12,
   };
 
   return roundOne(map[item.category] ?? 10);
 }
 
 function estimateDifficulty(item) {
-  if (item.category === "food" || item.category === "transportation") return "Medium";
-  if (item.category === "waste") return "Easy";
+  if (
+    item.category === "Food" ||
+    item.category === "Transportation"
+  ) {
+    return "Medium";
+  }
+
+  if (item.category === "Waste") {
+    return "Easy";
+  }
+
+  if (item.category === "Home Energy") {
+    return "Easy";
+  }
+
   return "Medium";
 }
 
 function estimatePayback(item) {
-  if (item.category === "homeEnergy") return "2-6 months";
-  if (item.category === "shopping") return "Immediate";
+  if (item.category === "Home Energy") {
+    return "2-6 months";
+  }
+
+  if (item.category === "Shopping") {
+    return "Immediate";
+  }
+
   return "Behavioral";
 }
 
+function recommendationConfidence(item) {
+  let confidence = 70;
 
+  if (item.priority === "high") {
+    confidence += 15;
+  }
+
+  if (item.impactKg > 20) {
+    confidence += 5;
+  }
+
+  if (item.impactKg > 50) {
+    confidence += 5;
+  }
+
+  if (item.effort === "Low") {
+    confidence += 3;
+  }
+
+  return Math.min(confidence, 98);
+}
+
+function recommendationReason(item) {
+  switch (item.category) {
+    case "Transportation":
+      return "Transportation is currently one of your largest emission sources and reducing vehicle usage creates immediate carbon savings.";
+
+    case "Home Energy":
+      return "Energy consumption is a significant contributor to your footprint and efficiency improvements can deliver long-term reductions.";
+
+    case "Food":
+      return "Food choices directly influence agricultural emissions and dietary adjustments can create measurable impact.";
+
+    case "Shopping":
+      return "Consumption habits contribute to product lifecycle emissions, making purchasing decisions an important reduction opportunity.";
+
+    case "Waste":
+      return "Reducing waste and increasing recycling can provide quick environmental benefits with relatively low effort.";
+
+    default:
+      return "This action can meaningfully reduce emissions.";
+  }
+}

@@ -50,6 +50,9 @@ export function renderApp(state, model) {
       </aside>
 
       <div class="content-shell">
+        ${state.notification
+          ? renderNotification(state.notification)
+          : ""}
         <header class="topbar">
           <div>
             <p class="eyebrow">Carbon score</p>
@@ -76,12 +79,12 @@ export function renderApp(state, model) {
 
 function renderActiveView(state, model) {
   if (state.activeView === "calculator") return renderCalculator(state, model.footprint);
-  if (state.activeView === "analytics") return renderAnalytics(state, model.footprint, model.recommendations, model.trend, model.forecast);
+  if (state.activeView === "analytics") return renderAnalytics(state, model.footprint, model.recommendations, model.trend, model.forecast, model.insight);
   if (state.activeView === "goals") return renderGoals(state);
   if (state.activeView === "challenges") return renderChallenges(state);
   if (state.activeView === "education") return renderEducation(state);
   if (state.activeView === "methodology") return renderMethodologyPanel(model.methodology);
-  return renderOverview(state, model.footprint, model.recommendations, model.trend);
+  return renderOverview(state, model.footprint, model.recommendations, model.trend, model.forecast, model.insight, model.badges, model.benchmark, model.prediction);
 }
 
 function renderMethodologyPanel(methodology) {
@@ -95,5 +98,33 @@ function renderMethodologyPanel(methodology) {
         </div>
       `).join("")}
     </section>
+  `;
+}
+
+function renderNotification(notification) {
+  return `
+    <div
+      class="badge-toast"
+      role="status"
+      aria-live="polite"
+    >
+      <div class="badge-toast-icon">
+        ${notification.badge.icon}
+      </div>
+
+      <div>
+        <strong>
+          ${e(notification.title)}
+        </strong>
+
+        <div>
+          ${e(notification.badge.title)}
+        </div>
+
+        <small>
+          ${e(notification.badge.description)}
+        </small>
+      </div>
+    </div>
   `;
 }

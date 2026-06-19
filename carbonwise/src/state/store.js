@@ -25,6 +25,16 @@ const defaultState = Object.freeze({
   lastMilestone: "",
   loading: false,
   error: "",
+
+  streak: {
+  current: 0,
+  best: 0,
+  lastRecordedDate: null,
+},
+
+  notification: null,
+  earnedBadges: [],
+
   simulation: {
     currentFootprint: null,
     projectedFootprint: null,
@@ -85,6 +95,7 @@ export function createStore(initialState = createInitialState()) {
 }
 
 export function reducer(state, action) {
+
   switch (action.type) {
     case "RECORD_FOOTPRINT":
   return {
@@ -175,6 +186,54 @@ export function reducer(state, action) {
     }
     case "RESET_SAMPLE":
       return { ...defaultState, theme: state.theme };
+    case "SHOW_NOTIFICATION":
+      return {
+        ...state,
+        notification: action.notification,
+      };
+    
+    case "CLEAR_NOTIFICATION":
+      return {
+        ...state,
+
+        notification: null,
+      };
+    case "SET_EARNED_BADGES":
+  return {
+    ...state,
+    earnedBadges: action.badges,
+  };
+
+  case "UPDATE_STREAK": {
+  const today = new Date().toDateString();
+
+  if (state.streak.lastRecordedDate === today) {
+    return state;
+  }
+
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  const continued =
+    state.streak.lastRecordedDate ===
+    yesterday.toDateString();
+
+  const current =
+    continued
+      ? state.streak.current + 1
+      : 1;
+
+  return {
+    ...state,
+
+    streak: {
+      current,
+      best: Math.max(current, state.streak.best),
+      lastRecordedDate: today,
+    },
+  };
+}
+
     default:
       return state;
   }
